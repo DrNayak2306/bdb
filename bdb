@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 SRC_FILE=$1
-DBG_FILE=/tmp/`basename $1`.dbg
+DBG_FILE=/tmp/$(basename $1).bdb
 
 show_src_line() {
     printf "\033[032m%d\t%s\033[m\n" $i "$line"
@@ -11,11 +11,15 @@ show_prompt_string() {
     printf "\033[33m>>>\033[m "
 }
 
-touch $DBG_FILE
-chmod +x $DBG_FILE
 printf "#!/usr/bin/env bash\n{ :\n" > $DBG_FILE
 
-for ((i=1; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
+if [[ $(head -1 $SRC_FILE | awk '/^#!/') ]]; then
+    start_line=1
+else
+    start_line=0
+fi
+
+for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
     show_prompt_string
     read cmd
     case "$cmd" in
@@ -29,7 +33,7 @@ for ((i=1; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
             printf "}>/dev/null\n" >> $DBG_FILE
             printf "%s\n" "$line" >> $DBG_FILE
             show_src_line
-            $DBG_FILE
+            bash $DBG_FILE
             ;;
         "exit")
             break

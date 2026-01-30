@@ -1,0 +1,6 @@
+echo hi
+a=2
+echo $a
+((a+=10))
+echo $a
+echo bye
