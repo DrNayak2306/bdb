@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-source ./definitions.bash
 shopt -u extglob
+
+source ./definitions.bash
 
 SRC_FILE=$1
 DBG_FILE=/tmp/$(basename $1).bdb
