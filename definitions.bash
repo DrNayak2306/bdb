@@ -55,11 +55,13 @@ show_cmd_err() {
 }
 
 show_cmd_help() {
-    printf "${BLUE}Available commands:
+    if [ -z $1 ]; then
+        printf "${BLUE}Available commands:
 q : quit
-p : print cumulative file
-b [d] [e] [f]: buffer [display (default)] [execute] [flush]
-n [w] [e]: next command [write to buffer (default)] [execute]
-d [VAR1] [VAR2] ... : display values of VAR1, VAR2, etc..
+g [e]: global actions
+b [e] [f]: buffer actions
+s : step
+d [VAR1] [VAR2] ... : display values of VAR1, VAR2, ...
 ${NC}"
+    fi
 }

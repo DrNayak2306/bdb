@@ -18,20 +18,30 @@ flush_buf
 for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
     show_prompt_string
     read cmd
-    case "$cmd" in
-        p)
-            head -$i $SRC_FILE
+    cmd_head=$(cut -d" " -f1 <<<"$cmd")
+    cmd_args=$(grep -Po "[a-z]* \K.*" <<<"$cmd")
+    case "$cmd_head" in
+        g)
+            if [[ -z $cmd_args ]]; then
+                head -$i $SRC_FILE
+            else
+                for action in $cmd_args; do
+                    case $action in
+                        e)
+                            bash <(head -$i $SRC_FILE)
+                            ;;
+                        *)
+                            show_cmd_err
+                    esac
+                done
+            fi
             ;;
-        b*)
-            buf_action=$(show_cmd_args b)
-            if [[ -z $buf_action ]]; then
+        b)
+            if [[ -z $cmd_args ]]; then
                 display_buf
             else
-                for action in $buf_action; do
+                for action in $cmd_args; do
                     case $action in
-                        d)
-                            display_buf
-                            ;;
                         e)
                             bash -c "$buf"
                             ;;
@@ -44,19 +54,18 @@ for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
                 done
             fi
             ;;
-        n*)
-            next_actions=$(show_cmd_args n)
+        s)
             ((i++))
             line=$(fetch_src_line $i)
             omit_end_reposition
             echo "$line" >> $DBG_FILE
             show_src_line $i "$line"
-            if [[ -z $next_actions ]]; then
+            if [[ -z $cmd_args ]]; then
                 increment_buf "$line"
             else
-                for action in $next_actions; do
+                for action in $cmd_args; do
                     case $action in
-                        w|"")
+                        w)
                             increment_buf "$line"
                             ;;
                         e)
@@ -74,11 +83,10 @@ for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
         h)
             show_cmd_help
             ;;
-        d*)
-            vars=$(show_cmd_args d)
+        d)
             (
             source $DBG_FILE
-            for var in $vars; do
+            for var in $cmd_args; do
                 echo "$var: ${!var}"
             done
             )
