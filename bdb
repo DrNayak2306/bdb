@@ -1,46 +1,18 @@
 #!/usr/bin/env bash
+source ./definitions.bash
+shopt -u extglob
 
 SRC_FILE=$1
 DBG_FILE=/tmp/$(basename $1).bdb
-
-omit_begin() {
-    printf "{ :\n" > $DBG_FILE
-}
-
-omit_end_reposition() {
-    sed -i '/^} &>\/dev\/null$/d' $DBG_FILE
-    printf "} &>/dev/null\n" >> $DBG_FILE
-}
-
-fetch_src_line() {
-    line=$(head -$i $SRC_FILE | tail -1)
-}
-
-show_src_line() {
-    printf "\033[032m%d\t%s\033[m\n" $i "$line"
-}
-
-show_prompt_string() {
-    printf "\033[33m>>>\033[m "
-}
-
-show_cmd_err() {
-    printf "\033[31mInvalid command. Enter h for help.\n\033[m"
-}
-
-show_cmd_help() {
-    printf "\033[34mAvailable commands:
-p : print cumulative file
-n : execute next command
-q : quit
-\033[m"
-}
 
 if [[ $(head -1 $SRC_FILE | awk '/^#!/') ]]; then
     start_line=1
 else
     start_line=0
 fi
+
+omit_begin
+flush_buf
 
 for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
     show_prompt_string
@@ -49,12 +21,51 @@ for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
         p)
             head -$i $SRC_FILE
             ;;
-        n)
+        b*)
+            buf_action=$(show_cmd_args b)
+            if [[ -z $buf_action ]]; then
+                display_buf
+            else
+                for action in $buf_action; do
+                    case $action in
+                        d)
+                            display_buf
+                            ;;
+                        e)
+                            bash -c "$buf"
+                            ;;
+                        f)
+                            flush_buf
+                            ;;
+                        *)
+                            show_cmd_err
+                    esac
+                done
+            fi
+            ;;
+        n*)
+            next_actions=$(show_cmd_args n)
             ((i++))
-            fetch_src_line
+            line=$(fetch_src_line $i)
             omit_end_reposition
-            show_src_line
-            bash $DBG_FILE
+            echo "$line" >> $DBG_FILE
+            show_src_line $i "$line"
+            if [[ -z $next_actions ]]; then
+                increment_buf "$line"
+            else
+                for action in $next_actions; do
+                    case $action in
+                        w|"")
+                            increment_buf "$line"
+                            ;;
+                        e)
+                            bash $DBG_FILE
+                            ;;
+                        *)
+                            show_cmd_err
+                    esac
+                done
+            fi
             ;;
         q)
             break
@@ -62,9 +73,19 @@ for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
         h)
             show_cmd_help
             ;;
+        d*)
+            vars=$(show_cmd_args d)
+            (
+            source $DBG_FILE
+            for var in $vars; do
+                echo "$var: ${!var}"
+            done
+            )
+            ;;
         *)
             show_cmd_err
             ;;
     esac
 done
 
+exit 0
