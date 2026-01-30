@@ -3,6 +3,19 @@
 SRC_FILE=$1
 DBG_FILE=/tmp/$(basename $1).bdb
 
+omit_begin() {
+    printf "{ :\n" > $DBG_FILE
+}
+
+omit_end_reposition() {
+    sed -i '/^} &>\/dev\/null$/d' $DBG_FILE
+    printf "} &>/dev/null\n" >> $DBG_FILE
+}
+
+fetch_src_line() {
+    line=$(head -$i $SRC_FILE | tail -1)
+}
+
 show_src_line() {
     printf "\033[032m%d\t%s\033[m\n" $i "$line"
 }
@@ -11,7 +24,17 @@ show_prompt_string() {
     printf "\033[33m>>>\033[m "
 }
 
-printf "#!/usr/bin/env bash\n{ :\n" > $DBG_FILE
+show_cmd_err() {
+    printf "\033[31mInvalid command. Enter h for help.\n\033[m"
+}
+
+show_cmd_help() {
+    printf "\033[34mAvailable commands:
+p : print cumulative file
+n : execute next command
+q : quit
+\033[m"
+}
 
 if [[ $(head -1 $SRC_FILE | awk '/^#!/') ]]; then
     start_line=1
@@ -28,18 +51,19 @@ for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
             ;;
         n)
             ((i++))
-            line=$(head -$i $SRC_FILE | tail -1)
-            sed -i '/^}>\/dev\/null$/d' $DBG_FILE
-            printf "}>/dev/null\n" >> $DBG_FILE
-            printf "%s\n" "$line" >> $DBG_FILE
+            fetch_src_line
+            omit_end_reposition
             show_src_line
             bash $DBG_FILE
             ;;
-        "exit")
+        q)
             break
             ;;
+        h)
+            show_cmd_help
+            ;;
         *)
-            echo "Wrong command"
+            show_cmd_err
             ;;
     esac
 done
