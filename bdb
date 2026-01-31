@@ -113,7 +113,7 @@ for ((i="$start_line";; )); do
       break
       ;;
     h)
-      show_cmd_help $cmd_args
+      (show_cmd_help $cmd_args)
       ;;
     *)
       show_cmd_err
