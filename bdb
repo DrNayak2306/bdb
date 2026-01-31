@@ -3,8 +3,17 @@ shopt -u extglob
 
 source ./definitions.bash
 
+trap handle_SIGINT 2
+trap handle_SIGTERM 15
+
+if [ -z "$1" ]; then
+  show_usage
+  exit_with_error
+fi
+
 SRC_FILE=$1
 DBG_FILE=/tmp/$(basename $1).bdb
+LINE_COUNT=$(wc -l $SRC_FILE | cut -d ' ' -f 1)
 
 if [[ $(head -1 $SRC_FILE | awk '/^#!/') ]]; then
   start_line=1
@@ -12,10 +21,10 @@ else
   start_line=0
 fi
 
-omit_begin
+write_omitstr_start
 flush_buf
 
-for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
+for ((i="$start_line";; )); do
   show_prompt_string
   read cmd
   cmd_head=$(cut -d" " -f1 <<<"$cmd")
@@ -55,11 +64,18 @@ for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
       fi
       ;;
     s)
+      if [ $i -ge $LINE_COUNT ]; then
+        show_eof
+        continue
+      fi
+
       ((i++))
+
       line=$(fetch_src_line $i)
-      omit_end_reposition
+      write_omitstr_end
       echo "$line" >> $DBG_FILE
       show_src_line $i "$line"
+
       if [[ -z $cmd_args ]]; then
         increment_buf "$line"
       else
@@ -77,12 +93,6 @@ for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
         done
       fi
       ;;
-    q)
-      break
-      ;;
-    h)
-      show_cmd_help
-      ;;
     d)
       (
       source $DBG_FILE
@@ -90,6 +100,20 @@ for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
         echo "$var: ${!var}"
       done
       )
+      ;;
+    e)
+      (
+        source $DBG_FILE
+        eval $cmd_args
+      )
+      ;;
+    q)
+      echo "Exiting..."
+      rm $DBG_FILE
+      break
+      ;;
+    h)
+      show_cmd_help $cmd_args
       ;;
     *)
       show_cmd_err
