@@ -7,94 +7,94 @@ SRC_FILE=$1
 DBG_FILE=/tmp/$(basename $1).bdb
 
 if [[ $(head -1 $SRC_FILE | awk '/^#!/') ]]; then
-    start_line=1
+  start_line=1
 else
-    start_line=0
+  start_line=0
 fi
 
 omit_begin
 flush_buf
 
 for ((i="$start_line"; i<$(wc -l $SRC_FILE | cut -d ' ' -f 1); )); do
-    show_prompt_string
-    read cmd
-    cmd_head=$(cut -d" " -f1 <<<"$cmd")
-    cmd_args=$(grep -Po "[a-z]* \K.*" <<<"$cmd")
-    case "$cmd_head" in
-        g)
-            if [[ -z $cmd_args ]]; then
-                head -$i $SRC_FILE
-            else
-                for action in $cmd_args; do
-                    case $action in
-                        e)
-                            bash <(head -$i $SRC_FILE)
-                            ;;
-                        *)
-                            show_cmd_err
-                    esac
-                done
-            fi
-            ;;
-        b)
-            if [[ -z $cmd_args ]]; then
-                display_buf
-            else
-                for action in $cmd_args; do
-                    case $action in
-                        e)
-                            bash -c "$buf"
-                            ;;
-                        f)
-                            flush_buf
-                            ;;
-                        *)
-                            show_cmd_err
-                    esac
-                done
-            fi
-            ;;
-        s)
-            ((i++))
-            line=$(fetch_src_line $i)
-            omit_end_reposition
-            echo "$line" >> $DBG_FILE
-            show_src_line $i "$line"
-            if [[ -z $cmd_args ]]; then
-                increment_buf "$line"
-            else
-                for action in $cmd_args; do
-                    case $action in
-                        w)
-                            increment_buf "$line"
-                            ;;
-                        e)
-                            bash $DBG_FILE
-                            ;;
-                        *)
-                            show_cmd_err
-                    esac
-                done
-            fi
-            ;;
-        q)
-            break
-            ;;
-        h)
-            show_cmd_help
-            ;;
-        d)
-            (
-            source $DBG_FILE
-            for var in $cmd_args; do
-                echo "$var: ${!var}"
-            done
-            )
-            ;;
-        *)
-            show_cmd_err
-            ;;
-    esac
+  show_prompt_string
+  read cmd
+  cmd_head=$(cut -d" " -f1 <<<"$cmd")
+  cmd_args=$(grep -Po "[a-z]* \K.*" <<<"$cmd")
+  case "$cmd_head" in
+    g)
+      if [[ -z $cmd_args ]]; then
+        head -$i $SRC_FILE
+      else
+        for action in $cmd_args; do
+          case $action in
+            e)
+              bash <(head -$i $SRC_FILE)
+              ;;
+            *)
+              show_cmd_err
+          esac
+        done
+      fi
+      ;;
+    b)
+      if [[ -z $cmd_args ]]; then
+        display_buf
+      else
+        for action in $cmd_args; do
+          case $action in
+            e)
+              bash -c "$buf"
+              ;;
+            f)
+              flush_buf
+              ;;
+            *)
+              show_cmd_err
+          esac
+        done
+      fi
+      ;;
+    s)
+      ((i++))
+      line=$(fetch_src_line $i)
+      omit_end_reposition
+      echo "$line" >> $DBG_FILE
+      show_src_line $i "$line"
+      if [[ -z $cmd_args ]]; then
+        increment_buf "$line"
+      else
+        for action in $cmd_args; do
+          case $action in
+            w)
+              increment_buf "$line"
+              ;;
+            e)
+              bash $DBG_FILE
+              ;;
+            *)
+              show_cmd_err
+          esac
+        done
+      fi
+      ;;
+    q)
+      break
+      ;;
+    h)
+      show_cmd_help
+      ;;
+    d)
+      (
+      source $DBG_FILE
+      for var in $cmd_args; do
+        echo "$var: ${!var}"
+      done
+      )
+      ;;
+    *)
+      show_cmd_err
+      ;;
+  esac
 done
 
 exit 0
